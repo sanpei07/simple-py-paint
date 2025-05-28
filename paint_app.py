@@ -48,6 +48,9 @@ class PaintApp:
         # 初期状態を履歴に保存
         self.save_state()
         
+        # キャンバスの初期表示を更新（境界線を表示するため）
+        self.update_canvas_from_image()
+        
     def setup_ui(self):
         """
         UIコンポーネントの設定
@@ -71,6 +74,13 @@ class PaintApp:
         self.canvas.bind("<Button-1>", self.start_draw)
         self.canvas.bind("<B1-Motion>", self.draw)
         self.canvas.bind("<ButtonRelease-1>", self.stop_draw)
+        
+        # ブラシプレビュー用のマウス移動イベントをバインド
+        self.canvas.bind("<Motion>", self.show_brush_preview)
+        self.canvas.bind("<Leave>", self.hide_brush_preview)
+        
+        # ブラシプレビュー用の変数
+        self.brush_preview_id = None
         
         # ツールフレーム
         tools_frame = tk.Frame(top_frame, bg="#f0f0f0")
@@ -181,6 +191,11 @@ class PaintApp:
         Args:
             event: マウスイベント
         """
+        # 描画中はプレビューを非表示にする
+        if self.brush_preview_id:
+            self.canvas.delete(self.brush_preview_id)
+            self.brush_preview_id = None
+            
         if self.tool == "fill":
             self.flood_fill(event.x, event.y)
         else:
@@ -231,6 +246,9 @@ class PaintApp:
                     fill="white",
                     width=self.brush_size
                 )
+                
+                # 消しゴムで描画した場合、境界線を再描画
+                self.draw_canvas_border()
             
             self.prev_x = x
             self.prev_y = y
@@ -248,6 +266,9 @@ class PaintApp:
         # 描画が終わったら状態を保存
         if self.tool != "fill":  # 塗りつぶしは別で処理
             self.save_state()
+        
+        # 描画終了後、再度プレビューを表示する
+        self.show_brush_preview(event)
         
     def change_tool(self, tool):
         """
@@ -381,14 +402,21 @@ class PaintApp:
             self.photo = ImageTk.PhotoImage(self.drawing_data)
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
             
-            # キャンバスの境界を可視化する（破線の長方形を描画）
-            self.canvas.create_rectangle(
-                0, 0, self.canvas_width - 1, self.canvas_height - 1,
-                outline="#0078D7", dash=(4, 4), width=1, tags="canvas_border"
-            )
+            # キャンバスの境界を描画
+            self.draw_canvas_border()
             
         except Exception as e:
             print(f"キャンバス更新エラー: {e}")
+            
+    def draw_canvas_border(self):
+        """
+        キャンバスの境界線を描画する
+        """
+        # キャンバスの境界を可視化する（破線の長方形を描画）
+        self.canvas.create_rectangle(
+            0, 0, self.canvas_width - 1, self.canvas_height - 1,
+            outline="#0078D7", dash=(4, 4), width=1, tags="canvas_border"
+        )
         
     def save_image(self):
         """
@@ -475,6 +503,9 @@ class PaintApp:
         self.canvas.delete("all")
         self.drawing_data = Image.new("RGB", (self.canvas_width, self.canvas_height), "white")
         self.drawing_data_draw = ImageDraw.Draw(self.drawing_data)
+        
+        # キャンバスをクリアした後に境界線を再描画
+        self.draw_canvas_border()
         
     def resize_canvas(self):
         """
@@ -572,3 +603,53 @@ class PaintApp:
             self.drawing_data = self.history[self.history_index].copy()
             self.drawing_data_draw = ImageDraw.Draw(self.drawing_data)
             self.update_canvas_from_image()
+            
+    def show_brush_preview(self, event):
+        """
+        マウス位置にブラシサイズのプレビューを表示
+        
+        Args:
+            event: マウスイベント
+        """
+        # ツールが「塗りつぶし」の場合はプレビューを表示しない
+        if self.tool == "fill":
+            self.hide_brush_preview(None)
+            return
+            
+        # キャンバス境界内に座標を制限
+        x = max(0, min(event.x, self.canvas_width - 1))
+        y = max(0, min(event.y, self.canvas_height - 1))
+        
+        # 以前のプレビューを削除
+        if self.brush_preview_id:
+            self.canvas.delete(self.brush_preview_id)
+        
+        # ツールに応じた色を設定
+        preview_color = "#0078D7" if self.tool == "pen" else "#FF0000"
+        
+        # ブラシプレビューを描画（円または輪郭のみの円）
+        if self.tool == "pen":
+            # 塗りつぶしなしの輪郭のみの円（ペンツールの場合）
+            self.brush_preview_id = self.canvas.create_oval(
+                x - self.brush_size//2, y - self.brush_size//2,
+                x + self.brush_size//2, y + self.brush_size//2,
+                outline=preview_color, width=1
+            )
+        elif self.tool == "eraser":
+            # 塗りつぶしなしの輪郭のみの円（消しゴムツールの場合）
+            self.brush_preview_id = self.canvas.create_oval(
+                x - self.brush_size//2, y - self.brush_size//2,
+                x + self.brush_size//2, y + self.brush_size//2,
+                outline=preview_color, width=1
+            )
+    
+    def hide_brush_preview(self, event):
+        """
+        ブラシプレビューを非表示にする
+        
+        Args:
+            event: マウスイベント
+        """
+        if self.brush_preview_id:
+            self.canvas.delete(self.brush_preview_id)
+            self.brush_preview_id = None
