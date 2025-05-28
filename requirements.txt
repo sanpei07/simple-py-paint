@@ -1,1 +1,4 @@
 pillow>=9.0.0
+magenta>=2.1.0
+tensorflow>=2.0.0
+numpy>=1.19.5
