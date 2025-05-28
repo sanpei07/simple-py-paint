@@ -10,6 +10,9 @@ from tkinter import colorchooser, filedialog, messagebox
 import os
 from PIL import Image, ImageDraw
 
+# ストローク予測のインポート
+from models.stroke_predictor import StrokePredictor
+
 class PaintApp:
     def __init__(self, root):
         """
@@ -28,6 +31,11 @@ class PaintApp:
         self.current_color = "#000000"  # 黒
         self.brush_size = 3
         self.tool = "pen"  # 初期ツールはペン
+        
+        # ストローク予測の設定
+        self.stroke_prediction_enabled = False
+        self.stroke_predictor = StrokePredictor()
+        self.prediction_ids = []  # キャンバス上の予測線のID
         
         # UIの設定
         self.setup_ui()
@@ -130,6 +138,18 @@ class PaintApp:
         self.size_slider.set(self.brush_size)
         self.size_slider.pack(side=tk.LEFT, padx=5)
         
+        # ストローク予測フレーム
+        prediction_frame = tk.Frame(top_frame, bg="#f0f0f0")
+        prediction_frame.pack(side=tk.LEFT, padx=10)
+        
+        # ストローク予測チェックボックス
+        self.prediction_var = tk.BooleanVar()
+        self.prediction_var.set(self.stroke_prediction_enabled)
+        self.prediction_checkbox = tk.Checkbutton(prediction_frame, text="ストローク予測", bg="#f0f0f0", 
+                                                 variable=self.prediction_var, 
+                                                 command=self.toggle_prediction)
+        self.prediction_checkbox.pack(side=tk.LEFT, padx=5)
+        
         # ファイル操作フレーム
         file_frame = tk.Frame(bottom_frame, bg="#f0f0f0")
         file_frame.pack(side=tk.LEFT, padx=10)
@@ -184,6 +204,69 @@ class PaintApp:
         redo_button = tk.Button(history_frame, text="やり直し", bg="#e0e0e0", command=self.redo)
         redo_button.pack(side=tk.LEFT, padx=2)
         
+    def toggle_prediction(self):
+        """
+        ストローク予測機能の有効/無効を切り替える
+        """
+        self.stroke_prediction_enabled = self.prediction_var.get()
+        
+        # 予測を非表示
+        self.clear_predictions()
+        
+        if self.stroke_prediction_enabled:
+            # 予測が有効になったらストローク履歴をクリア
+            self.stroke_predictor.clear()
+            print("ストローク予測が有効になりました")
+        else:
+            print("ストローク予測が無効になりました")
+            
+    def clear_predictions(self):
+        """
+        キャンバスから全ての予測を削除
+        """
+        for pred_id in self.prediction_ids:
+            self.canvas.delete(pred_id)
+        self.prediction_ids = []
+        
+    def show_predictions(self):
+        """
+        現在のストロークに基づいて予測を表示
+        """
+        if not self.stroke_prediction_enabled or self.tool != "pen":
+            return
+            
+        # 現在の予測を削除
+        self.clear_predictions()
+        
+        # 新しい予測を取得
+        predicted_points = self.stroke_predictor.predict_next_points()
+        
+        if len(predicted_points) < 2:
+            return
+            
+        # 予測線の色 (薄い青色)
+        prediction_color = "#0078D7"
+        
+        # 予測線を描画（点線と半透明を表現）
+        for i in range(len(predicted_points) - 1):
+            x1, y1 = predicted_points[i]
+            x2, y2 = predicted_points[i + 1]
+            
+            # 予測の確実性を表現するため、遠くなるほど線を薄くする
+            opacity = max(10, 70 - i * 6)  # 70%から始めて徐々に薄く
+            dash_pattern = (4, 2 + i // 2)  # 予測が遠くなるほど点線間隔を広げる
+            
+            # 予測線をキャンバスに追加して、IDを保存
+            line_id = self.canvas.create_line(
+                x1, y1, x2, y2,
+                width=max(1, self.brush_size // 2),
+                fill=prediction_color,
+                dash=dash_pattern,
+                stipple="gray50",  # 半透明効果
+                capstyle=tk.ROUND,
+            )
+            self.prediction_ids.append(line_id)
+            
     def start_draw(self, event):
         """
         描画開始時の処理
@@ -196,6 +279,9 @@ class PaintApp:
             self.canvas.delete(self.brush_preview_id)
             self.brush_preview_id = None
             
+        # 予測を消去
+        self.clear_predictions()
+        
         if self.tool == "fill":
             self.flood_fill(event.x, event.y)
         else:
@@ -204,6 +290,10 @@ class PaintApp:
             y = max(0, min(event.y, self.canvas_height - 1))
             self.prev_x = x
             self.prev_y = y
+            
+            # ストローク予測のためにポイントを記録
+            if self.stroke_prediction_enabled and self.tool == "pen":
+                self.stroke_predictor.add_point(x, y)
         
     def draw(self, event):
         """
@@ -232,6 +322,11 @@ class PaintApp:
                     fill=self.current_color,
                     width=self.brush_size
                 )
+                
+                # ストローク予測のために点を記録
+                if self.stroke_prediction_enabled:
+                    self.stroke_predictor.add_point(x, y)
+                    
             elif self.tool == "eraser":
                 self.canvas.create_line(
                     self.prev_x, self.prev_y, x, y,
@@ -266,6 +361,10 @@ class PaintApp:
         # 描画が終わったら状態を保存
         if self.tool != "fill":  # 塗りつぶしは別で処理
             self.save_state()
+            
+        # ストローク予測が有効な場合、予測を表示
+        if self.stroke_prediction_enabled and self.tool == "pen":
+            self.show_predictions()
         
         # 描画終了後、再度プレビューを表示する
         self.show_brush_preview(event)
@@ -278,6 +377,9 @@ class PaintApp:
             tool: 選択するツール
         """
         self.tool = tool
+        
+        # 予測をクリア
+        self.clear_predictions()
         
         # ボタンの見た目を更新
         self.pen_button.config(relief=tk.SUNKEN if tool == "pen" else tk.RAISED)
@@ -402,6 +504,9 @@ class PaintApp:
             self.photo = ImageTk.PhotoImage(self.drawing_data)
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
             
+            # 予測をクリア
+            self.prediction_ids = []
+            
             # キャンバスの境界を描画
             self.draw_canvas_border()
             
@@ -504,6 +609,10 @@ class PaintApp:
         self.drawing_data = Image.new("RGB", (self.canvas_width, self.canvas_height), "white")
         self.drawing_data_draw = ImageDraw.Draw(self.drawing_data)
         
+        # ストローク予測データもクリア
+        self.stroke_predictor.clear()
+        self.clear_predictions()
+        
         # キャンバスをクリアした後に境界線を再描画
         self.draw_canvas_border()
         
@@ -551,6 +660,10 @@ class PaintApp:
             
             # キャンバスウィジェットのサイズを更新
             self.canvas.config(width=self.canvas_width, height=self.canvas_height)
+            
+            # ストローク予測データをクリア
+            self.stroke_predictor.clear()
+            self.clear_predictions()
             
             # キャンバスの表示を更新
             self.update_canvas_from_image()
