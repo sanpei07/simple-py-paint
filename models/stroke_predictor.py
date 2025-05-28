@@ -59,6 +59,8 @@ class StrokePredictor:
         """
         if not SKETCH_RNN_AVAILABLE:
             print("警告: magentaまたはtensorflowがインストールされていないため、sketch-rnnは利用できません")
+            self.use_sketch_rnn = False
+            self.model_loaded = False
             return False
         
         try:
@@ -155,7 +157,15 @@ class StrokePredictor:
         Returns:
             予測されたポイントのリスト
         """
-        if not self.model_loaded or len(self.stroke_history) < 2:
+        # モデルが読み込まれていない場合
+        if not self.model_loaded:
+            print("sketch-rnnモデルが読み込まれていません。シンプル予測モデルを使用します。")
+            # モデル利用フラグを無効化
+            self.use_sketch_rnn = False
+            return self._predict_with_simple_model()
+        
+        # 十分な点がない場合
+        if len(self.stroke_history) < 2:
             return []
             
         try:
@@ -198,6 +208,8 @@ class StrokePredictor:
             
         except Exception as e:
             print(f"sketch-rnn予測エラー: {str(e)}")
+            # エラーが続く場合はモデル利用フラグを無効化
+            self.use_sketch_rnn = False
             # エラーが発生した場合はシンプルなモデルにフォールバック
             return self._predict_with_simple_model()
             

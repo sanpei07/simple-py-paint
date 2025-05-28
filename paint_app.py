@@ -241,10 +241,17 @@ class PaintApp:
         # ストローク予測機能の設定を更新
         self.stroke_predictor = StrokePredictor(use_sketch_rnn=self.sketch_rnn_enabled)
         
-        if self.sketch_rnn_enabled:
+        # sketch-rnnの実際の設定状態をUIに反映
+        if self.stroke_predictor.use_sketch_rnn:
             print("sketch-rnn予測モデルが有効になりました")
         else:
-            print("シンプル予測モデルが有効になりました")
+            # sketch-rnnが利用できない場合、チェックボックスを無効に戻す
+            if self.sketch_rnn_enabled:
+                self.sketch_rnn_var.set(False)
+                self.sketch_rnn_enabled = False
+                print("sketch-rnnが利用できないため、シンプル予測モデルを使用します")
+            else:
+                print("シンプル予測モデルが有効になりました")
             
     def clear_predictions(self):
         """
@@ -270,8 +277,8 @@ class PaintApp:
         if len(predicted_points) < 2:
             return
             
-        # 予測線の色 (薄い青色)
-        prediction_color = "#0078D7"
+        # 予測線の色 (sketch-rnn使用時は緑色、通常は青色)
+        prediction_color = "#00AA00" if self.stroke_predictor.use_sketch_rnn else "#0078D7"
         
         # 予測線を描画（点線と半透明を表現）
         for i in range(len(predicted_points) - 1):
