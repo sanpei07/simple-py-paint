@@ -12,8 +12,8 @@ Pythonで作成されたシンプルなペイントソフトウェアです。�
 - 色の選択
 - ブラシサイズの調整
 - ストローク予測機能（描画の続きを予測・表示）
-  - シンプルな予測モデル
-  - Googleのmagentaのsketch-rnnモデルを使用した高度な予測
+  - シンプルな予測モデル（基本機能）
+  - Googleのmagentaのsketch-rnnモデルを使用した高度な予測（オプション機能）
 - 画像の保存と読み込み
 - キャンバスのクリア
 - キャンバスサイズの変更
@@ -45,9 +45,21 @@ venv\Scripts\activate
 ## macOS/Linux:
 source venv/bin/activate
 
-# 必要なパッケージを一括でインストール
+# 基本機能に必要なパッケージを一括でインストール
 pip install -r requirements.txt
 ```
+
+### 高度な機能（sketch-rnn予測）をインストールする方法
+
+高度なストローク予測機能を使用するには、追加のパッケージが必要です。
+
+```bash
+# 基本パッケージのインストール後、以下を実行
+pip install tensorflow>=2.0.0
+pip install magenta>=2.1.0
+```
+
+注意: TensorFlowとMagentaのインストールは環境によって複雑な場合があります。これらのパッケージがなくても、アプリケーションの基本機能とシンプルなストローク予測機能は利用できます。
 
 ### 直接インストールする方法
 
@@ -56,8 +68,8 @@ pip install -r requirements.txt
 git clone https://github.com/sanpei07/simple-py-paint.git
 cd simple-py-paint
 
-# 必要なパッケージのインストール
-pip install pillow
+# 必要最小限のパッケージのインストール
+pip install pillow numpy
 ```
 
 ## 使い方
@@ -73,6 +85,7 @@ python main.py
 - **色を選択**: クリックして描画色を変更
 - **ブラシサイズ**: スライダーでペンと消しゴムの太さを変更
 - **ストローク予測**: チェックボックスをオンにすると、ペンツールで描画時に次の線を予測し表示
+  - 「sketch-rnn使用」チェックボックスは高度な予測機能を使用（追加パッケージのインストールが必要）
 - **保存**: 画像をPNGまたはJPGとして保存
 - **読み込み**: 既存の画像を読み込んで編集
 - **クリア**: キャンバスを白紙に戻す
