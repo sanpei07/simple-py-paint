@@ -290,9 +290,9 @@ class PaintApp:
             y: Y座標
         """
         # 座標が画像範囲内かチェック
-        if x < 0 or x >= self.canvas_width or y < 0 or y >= self.canvas_height:
-            return
-            
+        x = max(0, min(x, self.canvas_width - 1))
+        y = max(0, min(y, self.canvas_height - 1))
+        
         # 現在の色をRGBタプルに変換
         fill_color = self.hex_to_rgb(self.current_color)
         
