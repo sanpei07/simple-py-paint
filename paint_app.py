@@ -381,6 +381,12 @@ class PaintApp:
             self.photo = ImageTk.PhotoImage(self.drawing_data)
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
             
+            # キャンバスの境界を可視化する（破線の長方形を描画）
+            self.canvas.create_rectangle(
+                0, 0, self.canvas_width - 1, self.canvas_height - 1,
+                outline="#0078D7", dash=(4, 4), width=1, tags="canvas_border"
+            )
+            
         except Exception as e:
             print(f"キャンバス更新エラー: {e}")
         
