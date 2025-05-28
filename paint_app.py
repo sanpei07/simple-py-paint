@@ -184,8 +184,11 @@ class PaintApp:
         if self.tool == "fill":
             self.flood_fill(event.x, event.y)
         else:
-            self.prev_x = event.x
-            self.prev_y = event.y
+            # キャンバス境界内に座標を制限
+            x = max(0, min(event.x, self.canvas_width - 1))
+            y = max(0, min(event.y, self.canvas_height - 1))
+            self.prev_x = x
+            self.prev_y = y
         
     def draw(self, event):
         """
@@ -195,7 +198,9 @@ class PaintApp:
             event: マウスイベント
         """
         if self.prev_x and self.prev_y:
-            x, y = event.x, event.y
+            # キャンバス境界内に座標を制限
+            x = max(0, min(event.x, self.canvas_width - 1))
+            y = max(0, min(event.y, self.canvas_height - 1))
             
             # キャンバスに描画
             if self.tool == "pen":
@@ -285,9 +290,9 @@ class PaintApp:
             y: Y座標
         """
         # 座標が画像範囲内かチェック
-        if x < 0 or x >= self.canvas_width or y < 0 or y >= self.canvas_height:
-            return
-            
+        x = max(0, min(x, self.canvas_width - 1))
+        y = max(0, min(y, self.canvas_height - 1))
+        
         # 現在の色をRGBタプルに変換
         fill_color = self.hex_to_rgb(self.current_color)
         
