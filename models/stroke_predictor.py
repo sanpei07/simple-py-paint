@@ -202,7 +202,6 @@ class StrokePredictor:
             return self._predict_with_simple_model()
             
     def _predict_with_simple_model(self) -> List[Tuple[int, int]]:
-    def _predict_with_simple_model(self) -> List[Tuple[int, int]]:
         """
         シンプルな予測モデルを使用して次のストロークポイントを予測
         
