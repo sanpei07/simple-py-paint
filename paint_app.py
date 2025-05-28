@@ -140,6 +140,28 @@ class PaintApp:
         clear_button = tk.Button(canvas_ops_frame, text="クリア", bg="#e0e0e0", command=self.clear_canvas)
         clear_button.pack(side=tk.LEFT, padx=2)
         
+        # キャンバスサイズ変更フレーム
+        canvas_size_frame = tk.Frame(bottom_frame, bg="#f0f0f0")
+        canvas_size_frame.pack(side=tk.LEFT, padx=10)
+        
+        tk.Label(canvas_size_frame, text="サイズ:", bg="#f0f0f0").pack(side=tk.LEFT)
+        
+        # 幅入力
+        tk.Label(canvas_size_frame, text="幅:", bg="#f0f0f0").pack(side=tk.LEFT, padx=(5,0))
+        self.width_entry = tk.Entry(canvas_size_frame, width=6)
+        self.width_entry.pack(side=tk.LEFT, padx=2)
+        self.width_entry.insert(0, str(self.canvas_width))
+        
+        # 高さ入力
+        tk.Label(canvas_size_frame, text="高さ:", bg="#f0f0f0").pack(side=tk.LEFT, padx=(5,0))
+        self.height_entry = tk.Entry(canvas_size_frame, width=6)
+        self.height_entry.pack(side=tk.LEFT, padx=2)
+        self.height_entry.insert(0, str(self.canvas_height))
+        
+        # サイズ変更ボタン
+        resize_button = tk.Button(canvas_size_frame, text="サイズ変更", bg="#e0e0e0", command=self.resize_canvas)
+        resize_button.pack(side=tk.LEFT, padx=5)
+        
         # 履歴操作フレーム
         history_frame = tk.Frame(bottom_frame, bg="#f0f0f0")
         history_frame.pack(side=tk.LEFT, padx=10)
@@ -391,7 +413,31 @@ class PaintApp:
                 
                 # リサイズが必要な場合はリサイズする
                 if loaded_image.width != self.canvas_width or loaded_image.height != self.canvas_height:
-                    loaded_image = loaded_image.resize((self.canvas_width, self.canvas_height))
+                    # キャンバスサイズを読み込んだ画像に合わせるかユーザーに確認
+                    result = messagebox.askyesnocancel(
+                        "サイズ調整",
+                        f"読み込んだ画像のサイズ ({loaded_image.width}x{loaded_image.height}) がキャンバスサイズ ({self.canvas_width}x{self.canvas_height}) と異なります。\n\n" +
+                        "「はい」: キャンバスサイズを画像に合わせる\n" +
+                        "「いいえ」: 画像をキャンバスサイズにリサイズする\n" +
+                        "「キャンセル」: 読み込みを中止する"
+                    )
+                    
+                    if result is None:  # キャンセル
+                        return
+                    elif result:  # はい - キャンバスサイズを画像に合わせる
+                        self.canvas_width = loaded_image.width
+                        self.canvas_height = loaded_image.height
+                        
+                        # エントリーフィールドを更新
+                        self.width_entry.delete(0, tk.END)
+                        self.width_entry.insert(0, str(self.canvas_width))
+                        self.height_entry.delete(0, tk.END)
+                        self.height_entry.insert(0, str(self.canvas_height))
+                        
+                        # キャンバスウィジェットのサイズを更新
+                        self.canvas.config(width=self.canvas_width, height=self.canvas_height)
+                    else:  # いいえ - 画像をリサイズ
+                        loaded_image = loaded_image.resize((self.canvas_width, self.canvas_height))
                 
                 # 描画データを更新
                 self.drawing_data = loaded_image
@@ -418,6 +464,61 @@ class PaintApp:
         self.canvas.delete("all")
         self.drawing_data = Image.new("RGB", (self.canvas_width, self.canvas_height), "white")
         self.drawing_data_draw = ImageDraw.Draw(self.drawing_data)
+        
+    def resize_canvas(self):
+        """
+        キャンバスのサイズを変更する
+        """
+        try:
+            # 入力値を取得
+            new_width = int(self.width_entry.get())
+            new_height = int(self.height_entry.get())
+            
+            # 値の範囲チェック
+            if new_width < 50 or new_width > 2000 or new_height < 50 or new_height > 2000:
+                messagebox.showerror("サイズエラー", "キャンバスサイズは50から2000の範囲で設定してください")
+                return
+                
+            # 現在のサイズと同じ場合は何もしない
+            if new_width == self.canvas_width and new_height == self.canvas_height:
+                return
+                
+            # 現在の状態を保存
+            self.save_state()
+            
+            # 古い描画データを保存
+            old_drawing_data = self.drawing_data.copy()
+            
+            # 新しいサイズを設定
+            self.canvas_width = new_width
+            self.canvas_height = new_height
+            
+            # 新しい描画データを作成
+            self.drawing_data = Image.new("RGB", (self.canvas_width, self.canvas_height), "white")
+            self.drawing_data_draw = ImageDraw.Draw(self.drawing_data)
+            
+            # 既存の描画内容を新しいキャンバスにコピー（可能な範囲で）
+            paste_width = min(old_drawing_data.width, self.canvas_width)
+            paste_height = min(old_drawing_data.height, self.canvas_height)
+            
+            if paste_width > 0 and paste_height > 0:
+                # 既存の内容を左上から貼り付け
+                crop_box = (0, 0, paste_width, paste_height)
+                cropped_old_data = old_drawing_data.crop(crop_box)
+                self.drawing_data.paste(cropped_old_data, (0, 0))
+            
+            # キャンバスウィジェットのサイズを更新
+            self.canvas.config(width=self.canvas_width, height=self.canvas_height)
+            
+            # キャンバスの表示を更新
+            self.update_canvas_from_image()
+            
+            messagebox.showinfo("サイズ変更完了", f"キャンバスサイズを {self.canvas_width}x{self.canvas_height} に変更しました")
+            
+        except ValueError:
+            messagebox.showerror("入力エラー", "幅と高さには有効な数値を入力してください")
+        except Exception as e:
+            messagebox.showerror("サイズ変更エラー", f"キャンバスサイズの変更中にエラーが発生しました: {e}")
         
     def save_state(self):
         """
