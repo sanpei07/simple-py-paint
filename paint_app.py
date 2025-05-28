@@ -69,6 +69,10 @@ class PaintApp:
         eraser_button = tk.Button(top_frame, text="消しゴム", command=lambda: self.change_tool("eraser"))
         eraser_button.pack(side=tk.LEFT, padx=5, pady=5)
         
+        # 塗りつぶしツール
+        fill_button = tk.Button(top_frame, text="塗りつぶし", command=lambda: self.change_tool("fill"))
+        fill_button.pack(side=tk.LEFT, padx=5, pady=5)
+        
         # 色を選択するボタン
         color_button = tk.Button(top_frame, text="色を選択", command=self.choose_color)
         color_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -102,8 +106,11 @@ class PaintApp:
         Args:
             event: マウスイベント
         """
-        self.prev_x = event.x
-        self.prev_y = event.y
+        if self.tool == "fill":
+            self.flood_fill(event.x, event.y)
+        else:
+            self.prev_x = event.x
+            self.prev_y = event.y
         
     def draw(self, event):
         """
@@ -184,6 +191,107 @@ class PaintApp:
             size: 新しいブラシサイズ
         """
         self.brush_size = int(size)
+        
+    def flood_fill(self, x, y):
+        """
+        指定された位置から塗りつぶしを行う
+        
+        Args:
+            x: X座標
+            y: Y座標
+        """
+        # 座標が画像範囲内かチェック
+        if x < 0 or x >= self.canvas_width or y < 0 or y >= self.canvas_height:
+            return
+            
+        # 現在の色をRGBタプルに変換
+        fill_color = self.hex_to_rgb(self.current_color)
+        
+        # クリックした位置の色を取得
+        target_color = self.drawing_data.getpixel((x, y))
+        
+        # 塗りつぶす色と同じ場合は何もしない
+        if target_color == fill_color:
+            return
+            
+        # PILのImageDrawを使って塗りつぶし
+        try:
+            from PIL import ImageDraw
+            # PIL 10.0.0以降ではfloodfill関数を使用
+            ImageDraw.floodfill(self.drawing_data, (x, y), fill_color)
+            
+            # キャンバスを更新
+            self.update_canvas_from_image()
+            
+        except Exception as e:
+            # フォールバック: 独自の塗りつぶしアルゴリズム
+            self.custom_flood_fill(x, y, target_color, fill_color)
+            
+    def hex_to_rgb(self, hex_color):
+        """
+        16進数カラーコードをRGBタプルに変換
+        
+        Args:
+            hex_color: #RRGGBBの形式の色
+            
+        Returns:
+            (R, G, B)のタプル
+        """
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        
+    def custom_flood_fill(self, x, y, target_color, fill_color):
+        """
+        カスタム塗りつぶしアルゴリズム（フォールバック用）
+        
+        Args:
+            x, y: 開始座標
+            target_color: 置き換え対象の色
+            fill_color: 塗りつぶす色
+        """
+        if target_color == fill_color:
+            return
+            
+        # スタックベースの塗りつぶしアルゴリズム
+        stack = [(x, y)]
+        pixels = self.drawing_data.load()
+        
+        while stack:
+            current_x, current_y = stack.pop()
+            
+            if (current_x < 0 or current_x >= self.canvas_width or 
+                current_y < 0 or current_y >= self.canvas_height):
+                continue
+                
+            if pixels[current_x, current_y] != target_color:
+                continue
+                
+            pixels[current_x, current_y] = fill_color
+            
+            # 隣接する4方向のピクセルをスタックに追加
+            stack.append((current_x + 1, current_y))
+            stack.append((current_x - 1, current_y))
+            stack.append((current_x, current_y + 1))
+            stack.append((current_x, current_y - 1))
+            
+        # キャンバスを更新
+        self.update_canvas_from_image()
+        
+    def update_canvas_from_image(self):
+        """
+        PIL Imageデータからキャンバスを更新
+        """
+        try:
+            from PIL import ImageTk
+            # 現在のキャンバスをクリア
+            self.canvas.delete("all")
+            
+            # PIL ImageをTkinter用に変換して表示
+            self.photo = ImageTk.PhotoImage(self.drawing_data)
+            self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+            
+        except Exception as e:
+            print(f"キャンバス更新エラー: {e}")
         
     def save_image(self):
         """
