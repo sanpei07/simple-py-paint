@@ -34,7 +34,8 @@ class PaintApp:
         
         # ストローク予測の設定
         self.stroke_prediction_enabled = False
-        self.stroke_predictor = StrokePredictor()
+        self.sketch_rnn_enabled = False
+        self.stroke_predictor = StrokePredictor(use_sketch_rnn=self.sketch_rnn_enabled)
         self.prediction_ids = []  # キャンバス上の予測線のID
         
         # UIの設定
@@ -150,6 +151,14 @@ class PaintApp:
                                                  command=self.toggle_prediction)
         self.prediction_checkbox.pack(side=tk.LEFT, padx=5)
         
+        # sketch-rnn予測チェックボックス
+        self.sketch_rnn_var = tk.BooleanVar()
+        self.sketch_rnn_var.set(self.sketch_rnn_enabled)
+        self.sketch_rnn_checkbox = tk.Checkbutton(prediction_frame, text="sketch-rnn使用", bg="#f0f0f0", 
+                                                variable=self.sketch_rnn_var, 
+                                                command=self.toggle_sketch_rnn)
+        self.sketch_rnn_checkbox.pack(side=tk.LEFT, padx=5)
+        
         # ファイル操作フレーム
         file_frame = tk.Frame(bottom_frame, bg="#f0f0f0")
         file_frame.pack(side=tk.LEFT, padx=10)
@@ -219,6 +228,23 @@ class PaintApp:
             print("ストローク予測が有効になりました")
         else:
             print("ストローク予測が無効になりました")
+            
+    def toggle_sketch_rnn(self):
+        """
+        sketch-rnn予測機能の有効/無効を切り替える
+        """
+        self.sketch_rnn_enabled = self.sketch_rnn_var.get()
+        
+        # 予測を非表示
+        self.clear_predictions()
+        
+        # ストローク予測機能の設定を更新
+        self.stroke_predictor = StrokePredictor(use_sketch_rnn=self.sketch_rnn_enabled)
+        
+        if self.sketch_rnn_enabled:
+            print("sketch-rnn予測モデルが有効になりました")
+        else:
+            print("シンプル予測モデルが有効になりました")
             
     def clear_predictions(self):
         """
