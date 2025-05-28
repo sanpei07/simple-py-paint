@@ -11,6 +11,7 @@ Pythonで作成されたシンプルなペイントソフトウェアです。�
 - 塗りつぶしツール（フラッドフィル）
 - 色の選択
 - ブラシサイズの調整
+- ストローク予測機能（描画の続きを予測・表示）
 - 画像の保存と読み込み
 - キャンバスのクリア
 - キャンバスサイズの変更
@@ -22,9 +23,32 @@ Pythonで作成されたシンプルなペイントソフトウェアです。�
 - Tkinter (通常はPythonに同梱されています)
   - Linux: `sudo apt-get install python3-tk` でインストール
   - Windows/Mac: 通常はPythonインストール時に含まれています
-- Pillow (PIL): `pip install pillow` でインストール
+- その他必要なライブラリは「インストール方法」を参照してください
 
 ## インストール方法
+
+### 仮想環境（venv）を使用する方法（推奨）
+
+```bash
+# リポジトリのクローン
+git clone https://github.com/sanpei07/simple-py-paint.git
+cd simple-py-paint
+
+# 仮想環境の作成
+python -m venv venv
+
+# 仮想環境の有効化
+## Windows:
+venv\Scripts\activate
+## macOS/Linux:
+source venv/bin/activate
+
+# 必要なパッケージを一括でインストール
+pip install -r requirements.txt
+```
+
+### 直接インストールする方法
+
 ```bash
 # リポジトリのクローン
 git clone https://github.com/sanpei07/simple-py-paint.git
@@ -46,6 +70,7 @@ python main.py
 - **塗りつぶし**: 塗りつぶしツールを選択し、塗りつぶしたい領域をクリック
 - **色を選択**: クリックして描画色を変更
 - **ブラシサイズ**: スライダーでペンと消しゴムの太さを変更
+- **ストローク予測**: チェックボックスをオンにすると、ペンツールで描画時に次の線を予測し表示
 - **保存**: 画像をPNGまたはJPGとして保存
 - **読み込み**: 既存の画像を読み込んで編集
 - **クリア**: キャンバスを白紙に戻す
