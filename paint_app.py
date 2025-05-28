@@ -184,8 +184,11 @@ class PaintApp:
         if self.tool == "fill":
             self.flood_fill(event.x, event.y)
         else:
-            self.prev_x = event.x
-            self.prev_y = event.y
+            # キャンバス境界内に座標を制限
+            x = max(0, min(event.x, self.canvas_width - 1))
+            y = max(0, min(event.y, self.canvas_height - 1))
+            self.prev_x = x
+            self.prev_y = y
         
     def draw(self, event):
         """
@@ -195,7 +198,9 @@ class PaintApp:
             event: マウスイベント
         """
         if self.prev_x and self.prev_y:
-            x, y = event.x, event.y
+            # キャンバス境界内に座標を制限
+            x = max(0, min(event.x, self.canvas_width - 1))
+            y = max(0, min(event.y, self.canvas_height - 1))
             
             # キャンバスに描画
             if self.tool == "pen":
